@@ -1402,4 +1402,102 @@ describe Capybara::Driver::Webkit do
       subject.find("//div")[0].text.should == "97"
     end
   end
+
+  context "localStorage app" do
+    before(:all) do
+      @app = lambda do |env|
+        body = <<-HTML
+          <html>
+            <head>
+              <title>Try out localstorage</title>
+            </head>
+            <body>
+              <input type="text" id="in_key" />
+              <input type="text" id="in_value" />
+              <button id="store">Store</button>
+              <hr />
+              <input type="text" id="out_key" />
+              <div id="out_value"></div>
+              <button id="retrieve">Retrieve</button>
+              <hr />
+              <div id="status">idle (0)</div>
+              <div id="err"></div>
+              <script>
+                (function() {
+                  var status_count = 0;
+                  function status(msg) {
+                    status_count = status_count + 1;
+                    document.getElementById('status').innerHTML = msg + " (" + status_count + ")";
+                  }
+                  function processing(f) {
+                    var err = document.getElementById('err');
+                    err.innerHTML = '';
+                    status('processing');
+                    try {
+                      f();
+                    } catch(e) {
+                      err.innerText = e.message;
+                    } finally {
+                      status('idle');
+                    }
+                  }
+                  document.getElementById('retrieve').onclick = function() {
+                    processing(function() {
+                      var key = document.getElementById('out_key').value;
+                      var value = window.localStorage.getItem(key);
+                      var output = document.getElementById('out_value');
+                      output.innerText = value || '(not found)';
+                    });
+                  }
+                  document.getElementById('store').onclick = function() {
+                    processing(function() {
+                      var in_key = document.getElementById('in_key');
+                      var in_value = document.getElementById('in_value');
+                      window.localStorage.setItem(in_key, in_value);
+                    });
+                  }
+                })();
+              </script>
+            </body>
+          </html>
+        HTML
+        [200, { 'Content-Type' => 'text/html', 'Content-Length' => body.length.to_s }, [body]]
+      end
+    end
+
+    it "starts with no data" do #; subject.find('//input[@id="out_key"]').first.should == ''
+      subject.find('//*[@id="out_key"]').first.set 'the_key'
+      subject.find('//*[@id="retrieve"]').first.click
+      subject.find('//*[@id="status"]').first.text.should == 'idle (2)'
+      subject.find('//*[@id="err"]').first.text.should == ''
+      subject.find('//*[@id="out_value"]').first.text.should == '(not found)'
+    end
+
+    it "can store and retrieve data" do
+      subject.find('//*[@id="in_key"]').first.set 'the_key'
+      subject.find('//*[@id="in_value"]').first.set 'the_value'
+      subject.find('//*[@id="store"]').first.click
+      subject.find('//*[@id="status"]').first.text.should == 'idle (2)'
+      subject.find('//*[@id="err"]').first.text.should == ''
+      subject.find('//*[@id="out_key"]').first.set 'the_key'
+      subject.find('//*[@id="retrieve"]').first.click
+      subject.find('//*[@id="status"]').first.text.should == 'idle (4)'
+      subject.find('//*[@id="err"]').first.text.should == ''
+      subject.find('//*[@id="out_value"]').first.text.should == 'the_value'
+    end
+
+    it "can store data and retrieve it later" do
+      subject.find('//*[@id="in_key"]').first.set 'the_key'
+      subject.find('//*[@id="in_value"]').first.set 'the_value'
+      subject.find('//*[@id="store"]').first.click
+      subject.find('//*[@id="status"]').first.text.should == 'idle (2)'
+      subject.find('//*[@id="err"]').first.text.should == ''
+      subject.visit('/another/page')
+      subject.find('//*[@id="out_key"]').first.set 'the_key'
+      subject.find('//*[@id="retrieve"]').first.click
+      subject.find('//*[@id="status"]').first.text.should == 'idle (2)'
+      subject.find('//*[@id="err"]').first.text.should == ''
+      subject.find('//*[@id="out_value"]').first.text.should == 'the_value'
+    end
+  end
 end
