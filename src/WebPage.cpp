@@ -4,12 +4,14 @@
 #include "NetworkCookieJar.h"
 #include "UnsupportedContentHandler.h"
 #include <QResource>
+#include <QWebSettings>
 #include <iostream>
 
 WebPage::WebPage(QObject *parent) : QWebPage(parent) {
   setForwardUnsupportedContent(true);
   loadJavascript();
   setUserStylesheet();
+  enableLocalStorage();
 
   m_loading = false;
   this->setCustomNetworkAccessManager();
@@ -21,6 +23,10 @@ WebPage::WebPage(QObject *parent) : QWebPage(parent) {
   connect(this, SIGNAL(unsupportedContent(QNetworkReply*)),
       this, SLOT(handleUnsupportedContent(QNetworkReply*)));
   this->setViewportSize(QSize(1680, 1050));
+}
+
+void WebPage::enableLocalStorage() {
+  settings()->setAttribute(QWebSettings::LocalStorageEnabled, true);
 }
 
 void WebPage::setCustomNetworkAccessManager() {

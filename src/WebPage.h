@@ -49,6 +49,7 @@ class WebPage : public QWebPage {
     QString getLastAttachedFileName();
     void loadJavascript();
     void setUserStylesheet();
+    void enableLocalStorage();
     int m_lastStatus;
     QString m_pageHeaders;
     bool m_ignoreSslErrors;
